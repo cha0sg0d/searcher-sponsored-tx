@@ -11,46 +11,48 @@ import { checkSimulation, ETHER, gasPriceToGwei, printTransactions } from "./uti
 
 require('log-timestamp');
 
+// how is this calculated?
 const MINER_REWARD_IN_WEI = ETHER.div(1000).mul(12); // 0.012 ETH
 const BLOCKS_IN_FUTURE = 2;
 
-const ETHEREUM_RPC_URL = process.env.ETHEREUM_RPC_URL || "http://127.0.0.1:8545"
-const PRIVATE_KEY_ZERO_GAS = process.env.PRIVATE_KEY_ZERO_GAS || ""
-const PRIVATE_KEY_DONOR = process.env.PRIVATE_KEY_DONOR || ""
+const ETHEREUM_RPC_URL = process.env.ETHEREUM_RPC_URL || "http://127.0.0.1:8545";
+const PRIVATE_KEY_ZERO_GAS = process.env.PRIVATE_KEY_ZERO_GAS || "";
+const PRIVATE_KEY_DONOR = process.env.PRIVATE_KEY_DONOR || "";
 const FLASHBOTS_RELAY_SIGNING_KEY = process.env.FLASHBOTS_RELAY_SIGNING_KEY || "";
-const RECIPIENT = process.env.RECIPIENT || ""
+const RECIPIENT = process.env.RECIPIENT || "";
 
 if (PRIVATE_KEY_ZERO_GAS === "") {
   console.warn("Must provide PRIVATE_KEY_ZERO_GAS environment variable, corresponding to Ethereum EOA with assets to be transferred")
-  process.exit(1)
+  process.exit(1);
 }
 if (PRIVATE_KEY_DONOR === "") {
   console.warn("Must provide PRIVATE_KEY_DONOR environment variable, corresponding to an Ethereum EOA with ETH to pay miner")
-  process.exit(1)
+  process.exit(1);
 }
 if (FLASHBOTS_RELAY_SIGNING_KEY === "") {
   console.warn("Must provide FLASHBOTS_RELAY_SIGNING_KEY environment variable. Please see https://github.com/flashbots/pm/blob/main/guides/flashbots-alpha.md")
-  process.exit(1)
+  process.exit(1);
 }
 if (RECIPIENT === "") {
   console.warn("Must provide RECIPIENT environment variable, an address which will receive assets")
-  process.exit(1)
+  process.exit(1);
 }
 
 const provider = new providers.JsonRpcProvider(ETHEREUM_RPC_URL);
 
 const walletZeroGas = new Wallet(PRIVATE_KEY_ZERO_GAS, provider);
 const walletDonor = new Wallet(PRIVATE_KEY_DONOR, provider);
-const walletRelay = new Wallet(FLASHBOTS_RELAY_SIGNING_KEY, provider)
+const walletRelay = new Wallet(FLASHBOTS_RELAY_SIGNING_KEY, provider);
 
-console.log(`Zero Gas Account: ${walletZeroGas.address}`)
-console.log(`Donor Account: ${walletDonor.address}`)
-console.log(`Miner Reward: ${MINER_REWARD_IN_WEI.mul(1000).div(ETHER).toNumber() / 1000}`)
+console.log(`Zero Gas Account: ${walletZeroGas.address}`);
+console.log(`Donor Account: ${walletDonor.address}`);
+console.log(`Miner Reward: ${MINER_REWARD_IN_WEI.mul(1000).div(ETHER).toNumber() / 1000}`);
 
 async function main() {
   const flashbotsProvider = await FlashbotsBundleProvider.create(provider, walletRelay);
 
   const tokenAddress = "0xFca59Cd816aB1eaD66534D82bc21E7515cE441CF";
+  // make a DarkForest engine
   const engine: Base = new TransferERC20(provider, walletZeroGas.address, RECIPIENT, tokenAddress);
 
   // const kittyIds = [14925,97811];
@@ -63,14 +65,14 @@ async function main() {
     ...zeroGasTxs.map(transaction => {
       return {
         transaction,
-        signer: walletZeroGas,
-      }
+        signer: walletZeroGas, // for me, this will be tx hash (cuz don't have signer)
+      }; 
     }),
     {
       transaction: donorTx,
       signer: walletDonor
     }
-  ]
+  ];
   const signedBundle = await flashbotsProvider.signBundle(bundleTransactions)
   await printTransactions(bundleTransactions, signedBundle);
   const gasPrice = await checkSimulation(flashbotsProvider, signedBundle);
